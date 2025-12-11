@@ -136,9 +136,7 @@ where
         if let Some(canvas_event) = canvas_event {
             let state = tree.state.downcast_mut::<C::State>();
 
-            let message = self.chart.update(state, canvas_event, bounds, cursor);
-
-            if let (_, Some(message)) = message {
+            if let (_, Some(message)) = self.chart.update(state, canvas_event, bounds, cursor) {
                 shell.publish(message);
             }
         }
