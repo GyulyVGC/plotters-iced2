@@ -43,32 +43,35 @@ where
             chart,
             width: Length::Fill,
             height: Length::Fill,
-            shaping: Default::default(),
-            _marker: Default::default(),
+            shaping: Shaping::default(),
+            _marker: PhantomData,
         }
     }
 
     /// set width
+    #[must_use]
     pub fn width(mut self, width: Length) -> Self {
         self.width = width;
         self
     }
 
     /// set height
+    #[must_use]
     pub fn height(mut self, height: Length) -> Self {
         self.height = height;
         self
     }
 
     /// set text shaping
+    #[must_use]
     pub fn text_shaping(mut self, shaping: Shaping) -> Self {
         self.shaping = shaping;
         self
     }
 }
 
-impl<'a, Message, Theme, Renderer, C> Widget<Message, Theme, Renderer>
-    for ChartWidget<'a, Message, Theme, Renderer, C>
+impl<Message, Theme, Renderer, C> Widget<Message, Theme, Renderer>
+    for ChartWidget<'_, Message, Theme, Renderer, C>
 where
     C: Chart<Message>,
     Renderer: self::Renderer,

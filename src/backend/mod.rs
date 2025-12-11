@@ -4,7 +4,10 @@
 // Copyright: 2022, Joylei <leingliu@gmail.com>
 // License: MIT
 
+use crate::error::Error;
+use crate::utils::{CvtPoint, cvt_color, cvt_stroke};
 use iced_graphics::core::text::Paragraph;
+use iced_widget::text::LineHeight;
 use iced_widget::{
     canvas,
     core::{Font, Size, alignment::Vertical, font, text},
@@ -26,9 +29,6 @@ use plotters_backend::{
 };
 use std::collections::HashSet;
 
-use crate::error::Error;
-use crate::utils::{CvtPoint, cvt_color, cvt_stroke};
-
 /// The Iced drawing backend
 pub(crate) struct IcedChartBackend<'a, B> {
     frame: &'a mut canvas::Frame,
@@ -49,7 +49,7 @@ where
     }
 }
 
-impl<'a, B> DrawingBackend for IcedChartBackend<'a, B>
+impl<B> DrawingBackend for IcedChartBackend<'_, B>
 where
     B: text::Renderer<Font = Font>,
 {
@@ -224,7 +224,7 @@ where
             max_width: f32::INFINITY,
             color: cvt_color(&style.color()),
             size: (style.size() as f32).into(),
-            line_height: Default::default(),
+            line_height: LineHeight::default(),
             font,
             align_x,
             align_y,
@@ -277,7 +277,7 @@ where
             content: text,
             bounds,
             size: self.backend.default_size(),
-            line_height: Default::default(),
+            line_height: LineHeight::default(),
             font,
             align_x,
             align_y,
