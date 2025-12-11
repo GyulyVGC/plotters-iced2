@@ -11,18 +11,17 @@ extern crate tokio;
 
 use chrono::{DateTime, Utc};
 use iced::{
-    font,
+    Alignment, Element, Font, Length, Size, Task, font,
     widget::{
-        canvas::{Cache, Frame, Geometry},
         Column, Container, Text,
+        canvas::{Cache, Frame, Geometry},
     },
-    Alignment, Element, Font, Length, Size, Task,
 };
 use plotters::prelude::ChartBuilder;
 use plotters_backend::DrawingBackend;
 use plotters_iced::{
-    sample::lttb::{DataPoint, LttbSource},
     Chart, ChartWidget, Renderer,
+    sample::lttb::{DataPoint, LttbSource},
 };
 use rand::Rng;
 use std::time::Duration;

@@ -5,16 +5,15 @@
 // License: MIT
 
 use iced::{
-    event,
+    Alignment, Element, Length, Point, Size, event,
     mouse::Cursor,
     widget::{
-        canvas::{self, Cache, Frame, Geometry},
         Column, Container, Text,
+        canvas::{self, Cache, Frame, Geometry},
     },
-    Alignment, Element, Length, Point, Size,
 };
 use plotters::{
-    coord::{types::RangedCoordf32, ReverseCoordTranslate},
+    coord::{ReverseCoordTranslate, types::RangedCoordf32},
     prelude::*,
 };
 use plotters_iced::{Chart, ChartWidget, Renderer};

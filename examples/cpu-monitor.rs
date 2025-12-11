@@ -10,13 +10,13 @@ extern crate sysinfo;
 
 use chrono::{DateTime, Utc};
 use iced::{
+    Alignment, Element, Font, Length, Size, Task,
     alignment::{Horizontal, Vertical},
     font,
     widget::{
-        canvas::{Cache, Frame, Geometry},
         Column, Container, Row, Scrollable, Space, Text,
+        canvas::{Cache, Frame, Geometry},
     },
-    Alignment, Element, Font, Length, Size, Task,
 };
 use plotters::prelude::ChartBuilder;
 use plotters_backend::DrawingBackend;
