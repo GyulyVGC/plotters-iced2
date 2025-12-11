@@ -135,7 +135,7 @@ where
 
             let message = self.chart.update(state, canvas_event, bounds, cursor);
 
-            if let Some(message) = message {
+            if let (_, Some(message)) = message {
                 shell.publish(message);
             }
         }

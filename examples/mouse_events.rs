@@ -25,6 +25,10 @@ struct State {
 }
 
 impl State {
+    fn new() -> Self {
+        Self::default()
+    }
+
     fn update(&mut self, message: Message) {
         match message {
             Message::MouseEvent(event, point) => {
@@ -44,7 +48,7 @@ impl State {
         }
     }
 
-    fn view(&self) -> Element<Message> {
+    fn view(&self) -> Element<'_, Message> {
         let content = Column::new()
             .spacing(20)
             .width(Length::Fill)
@@ -74,7 +78,7 @@ struct ArtChart {
 }
 
 impl ArtChart {
-    fn view(&self) -> Element<Message> {
+    fn view(&self) -> Element<'_, Message> {
         let chart = ChartWidget::new(self)
             .width(Length::Fill)
             .height(Length::Fill);
@@ -211,7 +215,7 @@ impl Chart<Message> for ArtChart {
     fn update(
         &self,
         _state: &mut Self::State,
-        event: canvas::Event,
+        event: &iced::Event,
         bounds: iced::Rectangle,
         cursor: Cursor,
     ) -> (event::Status, Option<Message>) {
@@ -222,7 +226,7 @@ impl Chart<Message> for ArtChart {
                     let p = point - p_origin;
                     return (
                         event::Status::Captured,
-                        Some(Message::MouseEvent(evt, Point::new(p.x, p.y))),
+                        Some(Message::MouseEvent(evt.clone(), Point::new(p.x, p.y))),
                     );
                 }
                 _ => {}
@@ -238,7 +242,8 @@ enum Message {
 }
 
 fn main() -> iced::Result {
-    iced::application("Art", State::update, State::view)
+    iced::application(State::new, State::update, State::view)
+        .title("Art")
         .antialiasing(true)
         .run()
 }

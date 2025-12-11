@@ -4,6 +4,7 @@
 // Copyright: 2022, Joylei <leingliu@gmail.com>
 // License: MIT
 
+use iced_graphics::core::event::Status;
 use iced_widget::canvas::Cache;
 use iced_widget::core::Rectangle;
 use iced_widget::core::mouse::Interaction;
@@ -47,7 +48,7 @@ where
         event: &Event,
         bounds: Rectangle,
         cursor: Cursor,
-    ) -> Option<Message> {
+    ) -> (Status, Option<Message>) {
         C::update(self, state, event, bounds, cursor)
     }
     #[inline]
@@ -150,8 +151,8 @@ pub trait Chart<Message> {
         event: &Event,
         bounds: Rectangle,
         cursor: Cursor,
-    ) -> Option<Message> {
-        None
+    ) -> (Status, Option<Message>) {
+        (Status::Ignored, None)
     }
 
     /// Returns the current mouse interaction of the [`Chart`]
