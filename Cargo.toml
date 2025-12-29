@@ -1,17 +1,17 @@
 [package]
-name = "plotters-iced"
-version = "0.12.0"
+name = "plotters-iced2"
+version = "0.14.0"
 description = "Iced backend for Plotters"
 readme = "README.md"
 license = "MIT"
 edition = "2024"
 resolver = "2"
-homepage = "https://github.com/Joylei/plotters-iced"
-repository = "https://github.com/Joylei/plotters-iced.git"
-documentation = "https://docs.rs/crate/plotters-iced/"
+homepage = "https://github.com/GyulyVGC/plotters-iced2"
+repository = "https://github.com/GyulyVGC/plotters-iced2.git"
+documentation = "https://docs.rs/crate/plotters-iced2/"
 keywords = ["plotters", "chart", "plot", "iced", "backend"]
 categories = ["visualization"]
-authors = ["Joylei <leingliu@gmail.com>"]
+authors = ["Giuliano Bellini <gyulyvgc99@gmail.com>"]
 
 [workspace]
 members = [".", "examples/split-chart"]
@@ -32,8 +32,8 @@ plotters = { version = "0.3", default-features = false, features = [
 ] }
 iced = { version = "0.14", features = ["canvas", "tokio"] }
 chrono = { version = "0.4", default-features = false }
-rand = "0.8"
+rand = "0.9"
 tokio = { version = "1", features = ["rt"], default-features = false }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-sysinfo = { version = "0.30", default-features = false }
+sysinfo = { version = "0.37", default-features = false, features = ["system"] }

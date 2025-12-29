@@ -20,7 +20,7 @@ use iced::{
 };
 use plotters::prelude::ChartBuilder;
 use plotters_backend::DrawingBackend;
-use plotters_iced::{Chart, ChartWidget, Renderer};
+use plotters_iced2::{Chart, ChartWidget, Renderer};
 use std::{
     collections::VecDeque,
     time::{Duration, Instant},
@@ -119,7 +119,7 @@ impl Default for SystemChart {
     fn default() -> Self {
         Self {
             sys: System::new_with_specifics(
-                RefreshKind::new().with_cpu(CpuRefreshKind::new().with_cpu_usage()),
+                RefreshKind::nothing().with_cpu(CpuRefreshKind::nothing().with_cpu_usage()),
             ),
             last_sample_time: Instant::now(),
             items_per_row: 3,
@@ -146,7 +146,7 @@ impl SystemChart {
         }
         //eprintln!("refresh...");
 
-        self.sys.refresh_cpu();
+        self.sys.refresh_cpu_all();
         self.last_sample_time = Instant::now();
         let now = Utc::now();
         let data = self.sys.cpus().iter().map(|v| v.cpu_usage() as i32);

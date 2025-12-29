@@ -16,7 +16,7 @@ use plotters::{
     coord::{ReverseCoordTranslate, types::RangedCoordf32},
     prelude::*,
 };
-use plotters_iced::{Chart, ChartWidget, Renderer};
+use plotters_iced2::{Chart, ChartWidget, Renderer};
 use std::cell::RefCell;
 
 #[derive(Default)]

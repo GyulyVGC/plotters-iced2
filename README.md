@@ -1,8 +1,8 @@
-# plotters-iced
-[![Test and Build](https://github.com/joylei/plotters-iced/workflows/Test%20and%20Build/badge.svg?branch=master)](https://github.com/joylei/plotters-iced/actions?query=workflow%3A%22Test+and+Build%22)
-[![Documentation](https://docs.rs/plotters-iced/badge.svg)](https://docs.rs/plotters-iced)
-[![Crates.io](https://img.shields.io/crates/v/plotters-iced.svg)](https://crates.io/crates/plotters-iced)
-[![License](https://img.shields.io/crates/l/plotters-iced.svg)](https://github.com/joylei/plotters-iced/blob/master/LICENSE)
+# plotters-iced2
+[![Test and Build](https://github.com/GyulyVGC/plotters-iced2/workflows/Test%20and%20Build/badge.svg?branch=master)](https://github.com/GyulyVGC/plotters-iced2/actions?query=workflow%3A%22Test+and+Build%22)
+[![Documentation](https://docs.rs/plotters-iced2/badge.svg)](https://docs.rs/plotters-iced2)
+[![Crates.io](https://img.shields.io/crates/v/plotters-iced2.svg)](https://crates.io/crates/plotters-iced2)
+[![License](https://img.shields.io/crates/l/plotters-iced2.svg)](https://github.com/GyulyVGC/plotters-iced2/blob/master/LICENSE)
 
 This is an implementation of an Iced backend for Plotters, for both native and wasm applications.
 
@@ -26,11 +26,11 @@ Plotters is an extensible Rust drawing library that can be used to plot data on 
 
 ## How to install?
 
-Include `plotters-iced` in your `Cargo.toml` dependencies:
+Include `plotters-iced2` in your `Cargo.toml` dependencies:
 
 ```toml
 [dependencies]
-plotters-iced = "0.12"
+plotters-iced2 = "0.14"
 iced = { version = "0.14", features = ["canvas", "tokio"] }
 plotters="0.3"
 ```
@@ -40,10 +40,10 @@ plotters="0.3"
 First, import `Chart` and `ChartWidget`:
 
 ```rust,ignore
-use plotters_iced::{Chart, ChartWidget, DrawingBackend, ChartBuilder};
+use plotters_iced2::{Chart, ChartWidget, DrawingBackend, ChartBuilder};
 ```
 
-Then, derive `Chart` trait and build your chart, and let `plotters-iced` takes care the rest:
+Then, derive `Chart` trait and build your chart, and let `plotters-iced2` takes care the rest:
 
 ```rust,ignore
 struct MyChart;
@@ -82,7 +82,7 @@ cargo run --release --example cpu-monitor
 
 From this example, you'll learn:
 
-- how to build charts by `plotters-iced`
+- how to build charts by `plotters-iced2`
 - how to feed data to charts
 - how to make layouts of charts responsive
 - how to use fonts with charts

@@ -19,7 +19,7 @@ use iced::{
 };
 use plotters::prelude::ChartBuilder;
 use plotters_backend::DrawingBackend;
-use plotters_iced::{
+use plotters_iced2::{
     Chart, ChartWidget, Renderer,
     sample::lttb::{DataPoint, LttbSource},
 };
@@ -238,7 +238,7 @@ impl Chart<Message> for ExampleChart {
 fn generate_data() -> Vec<(DateTime<Utc>, f32)> {
     let total = 10_000_000;
     let mut data = Vec::new();
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let time_range = (24 * 3600 * 30) as f32;
     let interval = (3600 * 12) as f32;
     let start = Utc::now()
@@ -247,7 +247,7 @@ fn generate_data() -> Vec<(DateTime<Utc>, f32)> {
         )
         .unwrap();
     while data.len() < total {
-        let secs = rng.gen_range(0.1..time_range);
+        let secs = rng.random_range(0.1..time_range);
         let time = start
             .checked_sub_signed(chrono::Duration::from_std(Duration::from_secs_f32(secs)).unwrap())
             .unwrap();

@@ -29,9 +29,9 @@ use iced::{
 };
 use plotters::{coord::Shift, prelude::*};
 use plotters_backend::DrawingBackend;
-use plotters_iced::{plotters_backend, Chart, ChartWidget, DrawingArea};
+use plotters_iced2::{plotters_backend, Chart, ChartWidget, DrawingArea};
 
-const TITLE_FONT_SIZE: u16 = 22;
+const TITLE_FONT_SIZE: f32 = 22.0;
 
 // antialiasing issue: https://github.com/iced-rs/iced/issues/1159
 
@@ -88,7 +88,7 @@ impl State {
 struct MyChart;
 
 impl MyChart {
-    fn view(&self) -> Element<Message> {
+    fn view(&self) -> Element<'_, Message> {
         let chart = ChartWidget::new(self)
             .width(Length::Fill)
             .height(Length::Fill);
