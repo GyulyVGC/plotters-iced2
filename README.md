@@ -30,8 +30,8 @@ Include `plotters-iced` in your `Cargo.toml` dependencies:
 
 ```toml
 [dependencies]
-plotters-iced = "0.6"
-iced = { version = "0.7", features = ["canvas", "tokio"] }
+plotters-iced = "0.12"
+iced = { version = "0.14", features = ["canvas", "tokio"] }
 plotters="0.3"
 ```
 
@@ -39,13 +39,13 @@ plotters="0.3"
 
 First, import `Chart` and `ChartWidget`:
 
-```rust
+```rust,ignore
 use plotters_iced::{Chart, ChartWidget, DrawingBackend, ChartBuilder};
 ```
 
 Then, derive `Chart` trait and build your chart, and let `plotters-iced` takes care the rest:
 
-```rust
+```rust,ignore
 struct MyChart;
 impl Chart<Message> for MyChart {
     type State = ();
@@ -57,12 +57,12 @@ impl Chart<Message> for MyChart {
 
 Finally, render your chart view:
 
-```rust
+```rust,ignore
 impl MyChart {
     fn view(&mut self)->Element<Message> {
         ChartWidget::new(self)
-            .width(Length::Unit(200))
-            .height(Length::Unit(200))
+            .width(Length::Fixed(200))
+            .height(Length::Fixed(200))
             .into()
     }
 }

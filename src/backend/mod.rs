@@ -5,16 +5,18 @@
 // License: MIT
 
 use crate::error::Error;
-use crate::utils::{cvt_color, cvt_stroke, CvtPoint};
-use iced_graphics::{
-    alignment::{Horizontal, Vertical},
-    backend,
-    widget::canvas,
-    Backend, Size,
+use crate::utils::{CvtPoint, cvt_color, cvt_stroke};
+use iced_graphics::core::text::Paragraph;
+use iced_widget::text::LineHeight;
+use iced_widget::{
+    canvas,
+    core::{Font, Size, alignment::Vertical, font, text},
+    text::Alignment,
+    text::Shaping,
 };
-use iced_native::Font;
+use once_cell::unsync::Lazy;
 use plotters_backend::{
-    text_anchor,
+    //FontTransform,
     BackendColor,
     BackendCoord,
     BackendStyle,
@@ -23,38 +25,33 @@ use plotters_backend::{
     DrawingErrorKind,
     FontFamily,
     FontStyle,
-    //FontTransform,
+    text_anchor,
 };
+use std::collections::HashSet;
 
 /// The Iced drawing backend
-pub(crate) struct IcedChartBackend<'a, B, F>
-where
-    B: Backend + backend::Text,
-    F: Fn(FontFamily, FontStyle) -> Font,
-{
+pub(crate) struct IcedChartBackend<'a, B> {
     frame: &'a mut canvas::Frame,
     backend: &'a B,
-    font_resolver: &'a F,
+    shaping: Shaping,
 }
 
-impl<'a, B, F> IcedChartBackend<'a, B, F>
+impl<'a, B> IcedChartBackend<'a, B>
 where
-    B: Backend + backend::Text,
-    F: Fn(FontFamily, FontStyle) -> Font,
+    B: text::Renderer<Font = Font>,
 {
-    pub fn new(frame: &'a mut canvas::Frame, backend: &'a B, font_resolver: &'a F) -> Self {
+    pub fn new(frame: &'a mut canvas::Frame, backend: &'a B, shaping: Shaping) -> Self {
         Self {
             frame,
             backend,
-            font_resolver,
+            shaping,
         }
     }
 }
 
-impl<'a, B, F> DrawingBackend for IcedChartBackend<'a, B, F>
+impl<B> DrawingBackend for IcedChartBackend<'_, B>
 where
-    B: Backend + backend::Text,
-    F: Fn(FontFamily, FontStyle) -> Font,
+    B: text::Renderer<Font = Font>,
 {
     type ErrorType = Error;
 
@@ -207,28 +204,31 @@ where
         if style.color().alpha == 0.0 {
             return Ok(());
         }
-        let horizontal_alignment = match style.anchor().h_pos {
-            text_anchor::HPos::Left => Horizontal::Left,
-            text_anchor::HPos::Right => Horizontal::Right,
-            text_anchor::HPos::Center => Horizontal::Center,
+        let align_x = match style.anchor().h_pos {
+            text_anchor::HPos::Left => Alignment::Left,
+            text_anchor::HPos::Right => Alignment::Right,
+            text_anchor::HPos::Center => Alignment::Center,
         };
-        let vertical_alignment = match style.anchor().v_pos {
+        let align_y = match style.anchor().v_pos {
             text_anchor::VPos::Top => Vertical::Top,
             text_anchor::VPos::Center => Vertical::Center,
             text_anchor::VPos::Bottom => Vertical::Bottom,
         };
-        let font = (self.font_resolver)(style.family(), style.style());
+        let font = style_to_font(style);
         let pos = pos.cvt_point();
 
         //let (w, h) = self.estimate_text_size(text, style)?;
         let text = canvas::Text {
             content: text.to_owned(),
             position: pos,
+            max_width: f32::INFINITY,
             color: cvt_color(&style.color()),
-            size: style.size() as f32,
+            size: (style.size() as f32).into(),
+            line_height: LineHeight::default(),
             font,
-            horizontal_alignment,
-            vertical_alignment,
+            align_x,
+            align_y,
+            shaping: self.shaping,
         };
         //TODO: fix rotation until text rotation is supported by Iced
         // let rotate = match style.transform() {
@@ -260,12 +260,32 @@ where
         text: &str,
         style: &S,
     ) -> Result<(u32, u32), DrawingErrorKind<Self::ErrorType>> {
-        let font = (self.font_resolver)(style.family(), style.style());
+        let font = style_to_font(style);
         let bounds = self.frame.size();
-        let size = self
-            .backend
-            .measure(text, style.size() as f32, font, bounds);
-        Ok((size.0 as u32, size.1 as u32))
+        let align_x = match style.anchor().h_pos {
+            text_anchor::HPos::Left => Alignment::Left,
+            text_anchor::HPos::Right => Alignment::Right,
+            text_anchor::HPos::Center => Alignment::Center,
+        };
+        let align_y = match style.anchor().v_pos {
+            text_anchor::VPos::Top => Vertical::Top,
+            text_anchor::VPos::Center => Vertical::Center,
+            text_anchor::VPos::Bottom => Vertical::Bottom,
+        };
+
+        let p = B::Paragraph::with_text(iced_widget::core::text::Text {
+            content: text,
+            bounds,
+            size: self.backend.default_size(),
+            line_height: LineHeight::default(),
+            font,
+            align_x,
+            align_y,
+            shaping: self.shaping,
+            wrapping: iced_widget::core::text::Wrapping::Word,
+        });
+        let size = p.min_bounds();
+        Ok((size.width as u32, size.height as u32))
     }
 
     #[inline]
@@ -279,5 +299,33 @@ where
         // Notice: currently Iced has limitations, because widgets are not rendered in the order of creation, and different primitives go to different render pipelines.
 
         Ok(())
+    }
+}
+
+#[allow(static_mut_refs)]
+fn style_to_font<S: BackendTextStyle>(style: &S) -> Font {
+    // iced font family requires static str
+    static mut FONTS: Lazy<HashSet<String>> = Lazy::new(HashSet::new);
+
+    Font {
+        family: match style.family() {
+            FontFamily::Serif => font::Family::Serif,
+            FontFamily::SansSerif => font::Family::SansSerif,
+            FontFamily::Monospace => font::Family::Monospace,
+            FontFamily::Name(s) => {
+                let s = unsafe {
+                    if !FONTS.contains(s) {
+                        FONTS.insert(String::from(s));
+                    }
+                    FONTS.get(s).unwrap().as_str()
+                };
+                font::Family::Name(s)
+            }
+        },
+        weight: match style.style() {
+            FontStyle::Bold => font::Weight::Bold,
+            _ => font::Weight::Normal,
+        },
+        ..Font::DEFAULT
     }
 }

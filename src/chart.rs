@@ -4,33 +4,48 @@
 // Copyright: 2022, Joylei <leingliu@gmail.com>
 // License: MIT
 
-use iced_graphics::widget::canvas::{Cursor, Event, Frame, Geometry};
-use iced_native::{event::Status, Rectangle, Size};
+use iced_graphics::core::event::Status;
+use iced_widget::canvas::Cache;
+use iced_widget::core::Rectangle;
+use iced_widget::core::mouse::Interaction;
+use iced_widget::{
+    canvas::{Event, Frame, Geometry},
+    core::{Size, mouse::Cursor},
+};
 use plotters::{chart::ChartBuilder, coord::Shift, drawing::DrawingArea};
 use plotters_backend::DrawingBackend;
 
-impl<Message, C> Chart<Message> for &C
+/// graphics renderer
+pub trait Renderer {
+    /// draw frame
+    fn draw<F: Fn(&mut Frame)>(&self, bounds: Size, draw_fn: F) -> Geometry;
+
+    /// draw frame with cache
+    fn draw_cache<F: Fn(&mut Frame)>(&self, cache: &Cache, bounds: Size, draw_fn: F) -> Geometry;
+}
+
+impl<Message, C: ?Sized> Chart<Message> for &C
 where
     C: Chart<Message>,
 {
     type State = C::State;
     #[inline]
     fn build_chart<DB: DrawingBackend>(&self, state: &Self::State, builder: ChartBuilder<DB>) {
-        C::build_chart(self, state, builder)
+        C::build_chart(self, state, builder);
     }
     #[inline]
     fn draw_chart<DB: DrawingBackend>(&self, state: &Self::State, root: DrawingArea<DB, Shift>) {
-        C::draw_chart(self, state, root)
+        C::draw_chart(self, state, root);
     }
     #[inline]
-    fn draw<F: Fn(&mut Frame)>(&self, size: Size, f: F) -> Geometry {
-        C::draw(self, size, f)
+    fn draw<R: Renderer, F: Fn(&mut Frame)>(&self, renderer: &R, size: Size, f: F) -> Geometry {
+        C::draw(self, renderer, size, f)
     }
     #[inline]
     fn update(
         &self,
         state: &mut Self::State,
-        event: Event,
+        event: &Event,
         bounds: Rectangle,
         cursor: Cursor,
     ) -> (Status, Option<Message>) {
@@ -42,7 +57,7 @@ where
         state: &Self::State,
         bounds: Rectangle,
         cursor: Cursor,
-    ) -> iced_native::mouse::Interaction {
+    ) -> Interaction {
         C::mouse_interaction(self, state, bounds, cursor)
     }
 }
@@ -64,8 +79,8 @@ where
 /// impl MyChart {
 ///     fn view(&mut self)->Element<Message> {
 ///         ChartWidget::new(self)
-///             .width(Length::Unit(200))
-///             .height(Length::Unit(200))
+///             .width(Length::Fixed(200))
+///             .height(Length::Fixed(200))
 ///             .into()
 ///     }
 /// }
@@ -105,9 +120,9 @@ pub trait Chart<Message> {
         self.build_chart(state, builder);
     }
 
-    /// draw on [`iced_graphics::canvas::Canvas`]
+    /// draw on [`iced_widget::canvas::Canvas`]
     ///
-    /// override this method if you want to use [`iced_graphics::canvas::Cache`]
+    /// override this method if you want to use [`iced_widget::canvas::Cache`]
     ///
     /// ## Example
     /// ```rust,ignore
@@ -115,17 +130,15 @@ pub trait Chart<Message> {
     /// impl Chart<Message> for CpuUsageChart {
     ///
     ///       #[inline]
-    ///       fn draw<F: Fn(&mut Frame)>(&self, bounds: Size, draw_fn: F) -> Geometry {
-    ///            self.cache.draw(bounds, draw_fn)
+    ///       fn draw<R: Renderer, F: Fn(&mut Frame)>(&self, renderer: &R, bounds: Size, draw_fn: F) -> Geometry {
+    ///            R::draw_cache(renderer, &self.cache, size, draw_fn)
     ///       }
     ///      //...
     /// }
     /// ```
     #[inline]
-    fn draw<F: Fn(&mut Frame)>(&self, size: Size, f: F) -> Geometry {
-        let mut frame = Frame::new(size);
-        f(&mut frame);
-        frame.into_geometry()
+    fn draw<R: Renderer, F: Fn(&mut Frame)>(&self, renderer: &R, size: Size, f: F) -> Geometry {
+        R::draw(renderer, size, f)
     }
 
     /// react on event
@@ -135,7 +148,7 @@ pub trait Chart<Message> {
     fn update(
         &self,
         state: &mut Self::State,
-        event: Event,
+        event: &Event,
         bounds: Rectangle,
         cursor: Cursor,
     ) -> (Status, Option<Message>) {
@@ -150,7 +163,7 @@ pub trait Chart<Message> {
         state: &Self::State,
         bounds: Rectangle,
         cursor: Cursor,
-    ) -> iced_native::mouse::Interaction {
-        iced_native::mouse::Interaction::Idle
+    ) -> Interaction {
+        Interaction::Idle
     }
 }

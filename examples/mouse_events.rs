@@ -5,44 +5,31 @@
 // License: MIT
 
 use iced::{
-    executor,
+    Alignment, Element, Length, Point, Size, event,
+    mouse::Cursor,
     widget::{
-        canvas::{self, Cache, Cursor, Frame, Geometry},
         Column, Container, Text,
+        canvas::{self, Cache, Frame, Geometry},
     },
-    Alignment, Application, Command, Element, Length, Point, Size, Theme,
 };
 use plotters::{
-    coord::{types::RangedCoordf32, ReverseCoordTranslate},
+    coord::{ReverseCoordTranslate, types::RangedCoordf32},
     prelude::*,
 };
-use plotters_iced::{Chart, ChartWidget};
+use plotters_iced::{Chart, ChartWidget, Renderer};
 use std::cell::RefCell;
 
+#[derive(Default)]
 struct State {
     chart: ArtChart,
 }
 
-impl Application for State {
-    type Message = Message;
-    type Executor = executor::Default;
-    type Flags = ();
-    type Theme = Theme;
-
-    fn new(_flags: Self::Flags) -> (Self, Command<Self::Message>) {
-        (
-            Self {
-                chart: ArtChart::default(),
-            },
-            Command::none(),
-        )
+impl State {
+    fn new() -> Self {
+        Self::default()
     }
 
-    fn title(&self) -> String {
-        "Art".to_owned()
-    }
-
-    fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
+    fn update(&mut self, message: Message) {
         match message {
             Message::MouseEvent(event, point) => {
                 self.chart.set_current_position(point);
@@ -59,26 +46,22 @@ impl Application for State {
                 }
             }
         }
-
-        Command::none()
     }
 
-    fn view(&self) -> Element<Self::Message> {
+    fn view(&self) -> Element<'_, Message> {
         let content = Column::new()
             .spacing(20)
             .width(Length::Fill)
             .height(Length::Fill)
             .push(Text::new("Click below!").size(20))
             .push(self.chart.view())
-            .align_items(Alignment::Center)
+            .align_x(Alignment::Center)
             .padding(15);
 
         Container::new(content)
-            .width(Length::Fill)
-            .height(Length::Fill)
             .padding(5)
-            .center_x()
-            .center_y()
+            .center_x(Length::Fill)
+            .center_y(Length::Fill)
             .into()
     }
 }
@@ -95,7 +78,7 @@ struct ArtChart {
 }
 
 impl ArtChart {
-    fn view(&self) -> Element<Message> {
+    fn view(&self) -> Element<'_, Message> {
         let chart = ChartWidget::new(self)
             .width(Length::Fill)
             .height(Length::Fill);
@@ -138,8 +121,13 @@ impl ArtChart {
 
 impl Chart<Message> for ArtChart {
     type State = ();
-    fn draw<F: Fn(&mut Frame)>(&self, bounds: Size, draw_fn: F) -> Geometry {
-        self.cache.draw(bounds, draw_fn)
+    fn draw<R: Renderer, F: Fn(&mut Frame)>(
+        &self,
+        renderer: &R,
+        bounds: Size,
+        draw_fn: F,
+    ) -> Geometry {
+        renderer.draw_cache(&self.cache, bounds, draw_fn)
     }
 
     fn build_chart<DB: DrawingBackend>(&self, _state: &Self::State, mut builder: ChartBuilder<DB>) {
@@ -227,24 +215,24 @@ impl Chart<Message> for ArtChart {
     fn update(
         &self,
         _state: &mut Self::State,
-        event: canvas::Event,
+        event: &iced::Event,
         bounds: iced::Rectangle,
-        cursor: canvas::Cursor,
-    ) -> (iced_native::event::Status, Option<Message>) {
+        cursor: Cursor,
+    ) -> (event::Status, Option<Message>) {
         if let Cursor::Available(point) = cursor {
             match event {
                 canvas::Event::Mouse(evt) if bounds.contains(point) => {
                     let p_origin = bounds.position();
                     let p = point - p_origin;
                     return (
-                        iced_native::event::Status::Captured,
-                        Some(Message::MouseEvent(evt, Point::new(p.x, p.y))),
+                        event::Status::Captured,
+                        Some(Message::MouseEvent(evt.clone(), Point::new(p.x, p.y))),
                     );
                 }
                 _ => {}
             }
         }
-        (iced_native::event::Status::Ignored, None)
+        (event::Status::Ignored, None)
     }
 }
 
@@ -254,8 +242,8 @@ enum Message {
 }
 
 fn main() -> iced::Result {
-    State::run(iced::Settings {
-        antialiasing: true,
-        ..Default::default()
-    })
+    iced::application(State::new, State::update, State::view)
+        .title("Art")
+        .antialiasing(true)
+        .run()
 }

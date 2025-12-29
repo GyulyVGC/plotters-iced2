@@ -4,50 +4,65 @@
 // Copyright: 2022, Joylei <leingliu@gmail.com>
 // License: MIT
 
-use crate::backend::IcedChartBackend;
-use crate::Chart;
-use iced_graphics::{self, backend, Backend, Primitive, Vector};
-use iced_native::{Font, Layout};
+use iced_widget::{
+    canvas::{Cache, Frame, Geometry},
+    core::{Layout, Size, Vector},
+    text::Shaping,
+};
 use plotters::prelude::DrawingArea;
-use plotters_backend::{FontFamily, FontStyle};
 
-pub trait Renderer: iced_native::Renderer + iced_native::text::Renderer {
-    fn draw_chart<Message, C, F>(
+use crate::Chart;
+use crate::backend::IcedChartBackend;
+
+/// Graphics Renderer
+pub trait Renderer:
+    iced_widget::core::Renderer + iced_widget::core::text::Renderer + iced_graphics::geometry::Renderer
+{
+    /// draw a [Chart]
+    fn draw_chart<Message, C>(
         &mut self,
         state: &C::State,
         chart: &C,
-        font_resolver: &F,
         layout: Layout<'_>,
+        shaping: Shaping,
     ) where
-        C: Chart<Message>,
-        F: Fn(FontFamily, FontStyle) -> Font;
+        C: Chart<Message>;
 }
 
-impl<B: Backend + backend::Text, Theme> Renderer for iced_graphics::Renderer<B, Theme> {
-    fn draw_chart<Message, C, F>(
+impl crate::chart::Renderer for iced_widget::renderer::Renderer {
+    fn draw<F: Fn(&mut Frame)>(&self, size: Size, f: F) -> Geometry {
+        let mut frame = Frame::new(self, size);
+        f(&mut frame);
+        frame.into_geometry()
+    }
+
+    fn draw_cache<F: Fn(&mut Frame)>(&self, cache: &Cache, size: Size, f: F) -> Geometry {
+        cache.draw(self, size, f)
+    }
+}
+
+impl Renderer for iced_widget::renderer::Renderer {
+    fn draw_chart<Message, C>(
         &mut self,
         state: &C::State,
         chart: &C,
-        font_resolver: &F,
         layout: Layout<'_>,
+        shaping: Shaping,
     ) where
         C: Chart<Message>,
-        F: Fn(FontFamily, FontStyle) -> Font,
     {
         let bounds = layout.bounds();
         if bounds.width < 1.0 || bounds.height < 1.0 {
             return;
         }
-
-        let geometry = chart.draw(bounds.size(), |frame| {
-            let backend = IcedChartBackend::new(frame, self.backend(), font_resolver);
+        let geometry = chart.draw(self, bounds.size(), |frame| {
+            let backend = IcedChartBackend::new(frame, self, shaping);
             let root: DrawingArea<_, _> = backend.into();
             chart.draw_chart(state, root);
         });
         let translation = Vector::new(bounds.x, bounds.y);
-        self.draw_primitive(Primitive::Translate {
-            translation,
-            content: Box::new(geometry.into_primitive()),
+        iced_widget::core::Renderer::with_translation(self, translation, |renderer| {
+            iced_graphics::geometry::Renderer::draw_geometry(renderer, geometry);
         });
     }
 }

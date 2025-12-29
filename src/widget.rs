@@ -4,29 +4,36 @@
 // Copyright: 2022, Joylei <leingliu@gmail.com>
 // License: MIT
 
-use super::Chart;
-use crate::renderer::Renderer;
-use crate::utils::cursor_from_window_position;
 use core::marker::PhantomData;
-use iced_graphics::{renderer::Style, widget::canvas::Event};
-use iced_native::widget::tree::{self, Tree};
-use iced_native::{event, Clipboard, Font, Layout, Length, Point, Rectangle, Shell, Size};
-use iced_native::{Element, Widget};
-use plotters_backend::{FontFamily, FontStyle};
+
+use iced_widget::{
+    canvas::Event,
+    core::{
+        Element, Layout, Length, Rectangle, Shell, Size, Widget,
+        mouse::Cursor,
+        renderer::Style,
+        widget::{Tree, tree},
+    },
+    text::Shaping,
+};
+
+use crate::renderer::Renderer;
+
+use super::Chart;
 
 /// Chart container, turns [`Chart`]s to [`Widget`]s
-pub struct ChartWidget<'a, Message, Renderer, C>
+pub struct ChartWidget<'a, Message, Theme, Renderer, C>
 where
     C: Chart<Message>,
 {
     chart: C,
     width: Length,
     height: Length,
-    font_resolver: Box<dyn Fn(FontFamily, FontStyle) -> Font>,
-    _marker: PhantomData<&'a (Renderer, Message)>,
+    shaping: Shaping,
+    _marker: PhantomData<&'a (Renderer, Theme, Message)>,
 }
 
-impl<'a, Message, Renderer, C> ChartWidget<'a, Message, Renderer, C>
+impl<'a, Message, Theme, Renderer, C> ChartWidget<'a, Message, Theme, Renderer, C>
 where
     C: Chart<Message> + 'a,
 {
@@ -36,44 +43,41 @@ where
             chart,
             width: Length::Fill,
             height: Length::Fill,
-            font_resolver: Box::new(|_, _| Default::default()),
-            _marker: Default::default(),
+            shaping: Shaping::default(),
+            _marker: PhantomData,
         }
     }
 
     /// set width
+    #[must_use]
     pub fn width(mut self, width: Length) -> Self {
         self.width = width;
         self
     }
 
     /// set height
+    #[must_use]
     pub fn height(mut self, height: Length) -> Self {
         self.height = height;
         self
     }
 
-    /// set font resolver
-    pub fn resolve_font(
-        mut self,
-        resolver: impl Fn(FontFamily, FontStyle) -> Font + 'static,
-    ) -> Self {
-        self.font_resolver = Box::new(resolver);
+    /// set text shaping
+    #[must_use]
+    pub fn text_shaping(mut self, shaping: Shaping) -> Self {
+        self.shaping = shaping;
         self
     }
 }
 
-impl<'a, Message, Renderer, C> Widget<Message, Renderer> for ChartWidget<'a, Message, Renderer, C>
+impl<Message, Theme, Renderer, C> Widget<Message, Theme, Renderer>
+    for ChartWidget<'_, Message, Theme, Renderer, C>
 where
     C: Chart<Message>,
     Renderer: self::Renderer,
 {
-    fn width(&self) -> Length {
-        self.width
-    }
-
-    fn height(&self) -> Length {
-        self.height
+    fn size(&self) -> Size<Length> {
+        Size::new(self.width, self.height)
     }
 
     fn tag(&self) -> tree::Tag {
@@ -87,15 +91,13 @@ where
 
     #[inline]
     fn layout(
-        &self,
+        &mut self,
+        _tree: &mut Tree,
         _renderer: &Renderer,
-        limits: &iced_native::layout::Limits,
-    ) -> iced_native::layout::Node {
-        let size = limits
-            .width(self.width)
-            .height(self.height)
-            .resolve(Size::ZERO);
-        iced_native::layout::Node::new(size)
+        limits: &iced_widget::core::layout::Limits,
+    ) -> iced_widget::core::layout::Node {
+        let size = limits.resolve(self.width, self.height, Size::ZERO);
+        iced_widget::core::layout::Node::new(size)
     }
 
     #[inline]
@@ -103,70 +105,65 @@ where
         &self,
         tree: &Tree,
         renderer: &mut Renderer,
-        _theme: &<Renderer as iced_native::Renderer>::Theme,
+        _theme: &Theme,
         _style: &Style,
-        layout: iced_native::Layout<'_>,
-        _cursor_position: Point,
+        layout: Layout<'_>,
+        _cursor_position: Cursor,
         _viewport: &Rectangle,
     ) {
         let state = tree.state.downcast_ref::<C::State>();
-        renderer.draw_chart(state, &self.chart, &self.font_resolver, layout);
+        renderer.draw_chart(state, &self.chart, layout, self.shaping);
     }
 
     #[inline]
-    fn on_event(
+    fn update(
         &mut self,
         tree: &mut Tree,
-        event: iced_native::Event,
+        event: &iced_graphics::core::Event,
         layout: Layout<'_>,
-        cursor_position: Point,
+        cursor: Cursor,
         _renderer: &Renderer,
-        _clipboard: &mut dyn Clipboard,
+        _clipboard: &mut dyn iced_widget::core::Clipboard,
         shell: &mut Shell<'_, Message>,
-    ) -> event::Status {
+        _rectangle: &Rectangle,
+    ) {
         let bounds = layout.bounds();
-        let canvas_event = match event {
-            iced_native::Event::Mouse(mouse_event) => Some(Event::Mouse(mouse_event)),
-            iced_native::Event::Keyboard(keyboard_event) => Some(Event::Keyboard(keyboard_event)),
-            _ => None,
+        let canvas_event = if matches!(event, Event::Mouse(_) | Event::Keyboard(_)) {
+            Some(event)
+        } else {
+            None
         };
-        let cursor = cursor_from_window_position(cursor_position);
         if let Some(canvas_event) = canvas_event {
             let state = tree.state.downcast_mut::<C::State>();
 
-            let (event_status, message) = self.chart.update(state, canvas_event, bounds, cursor);
-
-            if let Some(message) = message {
+            if let (_, Some(message)) = self.chart.update(state, canvas_event, bounds, cursor) {
                 shell.publish(message);
             }
-            return event_status;
         }
-        event::Status::Ignored
     }
 
     fn mouse_interaction(
         &self,
         tree: &Tree,
         layout: Layout<'_>,
-        cursor_position: Point,
+        cursor: Cursor,
         _viewport: &Rectangle,
         _renderer: &Renderer,
-    ) -> iced_native::mouse::Interaction {
+    ) -> iced_widget::core::mouse::Interaction {
         let state = tree.state.downcast_ref::<C::State>();
         let bounds = layout.bounds();
-        let cursor = cursor_from_window_position(cursor_position);
         self.chart.mouse_interaction(state, bounds, cursor)
     }
 }
 
-impl<'a, Message, Renderer, C> From<ChartWidget<'a, Message, Renderer, C>>
-    for Element<'a, Message, Renderer>
+impl<'a, Message, Theme, Renderer, C> From<ChartWidget<'a, Message, Theme, Renderer, C>>
+    for Element<'a, Message, Theme, Renderer>
 where
     Message: 'a,
     C: Chart<Message> + 'a,
     Renderer: self::Renderer,
 {
-    fn from(widget: ChartWidget<'a, Message, Renderer, C>) -> Self {
+    fn from(widget: ChartWidget<'a, Message, Theme, Renderer, C>) -> Self {
         Element::new(widget)
     }
 }

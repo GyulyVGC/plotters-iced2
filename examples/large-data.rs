@@ -11,37 +11,37 @@ extern crate tokio;
 
 use chrono::{DateTime, Utc};
 use iced::{
-    executor,
+    Alignment, Element, Font, Length, Size, Task, font,
     widget::{
-        canvas::{Cache, Frame, Geometry},
         Column, Container, Text,
+        canvas::{Cache, Frame, Geometry},
     },
-    Alignment, Application, Command, Element, Font, Length, Settings, Size, Subscription, Theme,
 };
 use plotters::prelude::ChartBuilder;
 use plotters_backend::DrawingBackend;
 use plotters_iced::{
+    Chart, ChartWidget, Renderer,
     sample::lttb::{DataPoint, LttbSource},
-    Chart, ChartWidget,
 };
 use rand::Rng;
 use std::time::Duration;
 use std::{collections::VecDeque, time::Instant};
 
-const TITLE_FONT_SIZE: u16 = 22;
+const TITLE_FONT_SIZE: u32 = 22;
 
-const FONT_BOLD: Font = Font::External {
-    name: "sans-serif-bold",
-    bytes: include_bytes!("./fonts/notosans-bold.ttf"),
+const FONT_BOLD: Font = Font {
+    family: font::Family::Name("Noto Sans"),
+    weight: font::Weight::Bold,
+    ..Font::DEFAULT
 };
 
 fn main() {
-    State::run(Settings {
-        antialiasing: true,
-        default_font: Some(include_bytes!("./fonts/notosans-regular.ttf")),
-        ..Settings::default()
-    })
-    .unwrap();
+    iced::application(State::new, State::update, State::view)
+        .title("Large Data Example")
+        .antialiasing(true)
+        .default_font(Font::with_name("Noto Sans"))
+        .run()
+        .unwrap();
 }
 
 struct Wrapper<'a>(&'a DateTime<Utc>, &'a f32);
@@ -59,6 +59,7 @@ impl DataPoint for Wrapper<'_> {
 
 #[derive(Debug)]
 enum Message {
+    FontLoaded(Result<(), font::Error>),
     DataLoaded(Vec<(DateTime<Utc>, f32)>),
     Sampled(Vec<(DateTime<Utc>, f32)>),
 }
@@ -67,28 +68,25 @@ struct State {
     chart: Option<ExampleChart>,
 }
 
-impl Application for State {
-    type Message = self::Message;
-    type Executor = executor::Default;
-    type Flags = ();
-    type Theme = Theme;
-
-    fn new(_flags: Self::Flags) -> (Self, Command<Self::Message>) {
+impl State {
+    fn new() -> (Self, Task<Message>) {
         (
             Self { chart: None },
-            Command::perform(tokio::task::spawn_blocking(generate_data), |data| {
-                Message::DataLoaded(data.unwrap())
-            }),
+            Task::batch([
+                font::load(include_bytes!("./fonts/notosans-regular.ttf").as_slice())
+                    .map(Message::FontLoaded),
+                font::load(include_bytes!("./fonts/notosans-bold.ttf").as_slice())
+                    .map(Message::FontLoaded),
+                Task::perform(tokio::task::spawn_blocking(generate_data), |data| {
+                    Message::DataLoaded(data.unwrap())
+                }),
+            ]),
         )
     }
 
-    fn title(&self) -> String {
-        "Large Data Example".to_owned()
-    }
-
-    fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
+    fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::DataLoaded(data) => Command::perform(
+            Message::DataLoaded(data) => Task::perform(
                 tokio::task::spawn_blocking(move || {
                     let now = Instant::now();
                     let sampled: Vec<_> = (&data[..])
@@ -103,15 +101,16 @@ impl Application for State {
             ),
             Message::Sampled(sampled) => {
                 self.chart = Some(ExampleChart::new(sampled.into_iter()));
-                Command::none()
+                Task::none()
             }
+            _ => Task::none(),
         }
     }
 
-    fn view(&self) -> Element<'_, Self::Message> {
+    fn view(&self) -> Element<'_, Message> {
         let content = Column::new()
             .spacing(20)
-            .align_items(Alignment::Start)
+            .align_x(Alignment::Start)
             .width(Length::Fill)
             .height(Length::Fill)
             .push(
@@ -125,16 +124,10 @@ impl Application for State {
             });
 
         Container::new(content)
-            .width(Length::Fill)
-            .height(Length::Fill)
             .padding(5)
-            .center_x()
-            .center_y()
+            .center_x(Length::Fill)
+            .center_y(Length::Fill)
             .into()
-    }
-
-    fn subscription(&self) -> Subscription<Self::Message> {
-        Subscription::none()
     }
 }
 
@@ -152,7 +145,7 @@ impl ExampleChart {
         }
     }
 
-    fn view(&self) -> Element<Message> {
+    fn view(&self) -> Element<'_, Message> {
         let chart = ChartWidget::new(self)
             .width(Length::Fill)
             .height(Length::Fill);
@@ -174,12 +167,17 @@ impl Chart<Message> for ExampleChart {
     // }
 
     #[inline]
-    fn draw<F: Fn(&mut Frame)>(&self, bounds: Size, draw_fn: F) -> Geometry {
-        self.cache.draw(bounds, draw_fn)
+    fn draw<R: Renderer, F: Fn(&mut Frame)>(
+        &self,
+        renderer: &R,
+        bounds: Size,
+        draw_fn: F,
+    ) -> Geometry {
+        renderer.draw_cache(&self.cache, bounds, draw_fn)
     }
 
     fn build_chart<DB: DrawingBackend>(&self, _state: &Self::State, mut chart: ChartBuilder<DB>) {
-        use plotters::{prelude::*, style::Color};
+        use plotters::prelude::*;
 
         const PLOT_LINE_COLOR: RGBColor = RGBColor(0, 175, 255);
 
@@ -215,7 +213,7 @@ impl Chart<Message> for ExampleChart {
             .axis_style(ShapeStyle::from(plotters::style::colors::BLUE.mix(0.45)).stroke_width(1))
             .y_labels(10)
             .y_label_style(
-                ("sans-serif", 15)
+                ("Noto Sans", 15)
                     .into_font()
                     .color(&plotters::style::colors::BLUE.mix(0.65))
                     .transform(FontTransform::Rotate90),
