@@ -24,6 +24,7 @@ extern crate iced;
 extern crate plotters;
 
 use iced::{
+    font::Font,
     widget::{Column, Container, Text},
     window, Alignment, Element, Length,
 };
@@ -32,6 +33,8 @@ use plotters_backend::DrawingBackend;
 use plotters_iced2::{plotters_backend, Chart, ChartWidget, DrawingArea};
 
 const TITLE_FONT_SIZE: f32 = 22.0;
+// Font is imported in from iced's "fira-sans" feature
+const FONT_NAME: &str = "Fira Sans";
 
 // antialiasing issue: https://github.com/iced-rs/iced/issues/1159
 
@@ -43,6 +46,7 @@ fn main() {
     }
     let app = iced::application(State::new, State::update, State::view)
         .title("Split Chart Example")
+        .default_font(Font::with_name(FONT_NAME))
         .antialiasing(cfg!(not(target_arch = "wasm32")))
         .subscription(|_| window::frames().map(|_| Message::Tick));
     app.run().unwrap();
@@ -114,7 +118,7 @@ impl Chart<Message> for MyChart {
 fn draw_chart<DB: DrawingBackend>(mut chart: ChartBuilder<DB>, power: usize) {
     let mut chart = chart
         .margin(30)
-        .caption(format!("y=x^{}", power), ("sans-serif", 22))
+        .caption(format!("y=x^{}", power), (FONT_NAME, 22))
         .x_label_area_size(30)
         .y_label_area_size(30)
         .build_cartesian_2d(-1f32..1f32, -1.2f32..1.2f32)
@@ -123,6 +127,7 @@ fn draw_chart<DB: DrawingBackend>(mut chart: ChartBuilder<DB>, power: usize) {
     chart
         .configure_mesh()
         .x_labels(3)
+        .label_style(FONT_NAME)
         .y_labels(3)
         // .y_label_style(
         //     ("sans-serif", 15)
